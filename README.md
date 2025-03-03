@@ -6,12 +6,16 @@ TransMeet is a tool for processing meeting recordings, extracting key frames, an
 
 ## Features
 
-- Extract key frames from video based on content similarity
+- Two input modes:
+  - Video file upload: Process pre-recorded videos
+  - Screen capture: Capture and process screen content in real-time
+- Extract key frames based on content similarity
 - Generate transcripts using OpenAI's Whisper models
 - Export results as PDF, audio, and text files
 - User-friendly web interface
 - Configurable processing parameters
 - Support for multiple video formats
+- Extreme compression, successfully reducing a 2.48GB video to just 321MB
 
 ## Requirements
 
@@ -23,7 +27,7 @@ TransMeet is a tool for processing meeting recordings, extracting key frames, an
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/transmeet.git
+git clone https://github.com/ZhenghaoYang19/transmeet.git
 cd transmeet
 ```
 
@@ -46,11 +50,22 @@ python app.py
 
 2. Open your browser and navigate to `http://localhost:7860`
 
-3. Process a video:
+3. Choose your input mode:
+
+   ### Video Upload
    - Upload your video file
    - Adjust configuration settings (optional)
    - Click "Process Video"
    - Wait for processing to complete
+   - Switch to "Results & Export" tab to view results
+
+   ### Screen Capture
+   - Select capture type (Monitor or Window)
+   - For Monitor capture: Choose the monitor from the dropdown
+   - For Window capture: Enter the window title (or part of it)(e.g. chrome, edge, TencentMeeting)
+   - Adjust configuration settings (optional)
+   - Click "Start Capture"
+   - Click "Stop Capture" when finished
    - Switch to "Results & Export" tab to view results
 
 4. Export results:
@@ -64,7 +79,7 @@ You can adjust the following parameters:
 
 - **Similarity Threshold** (0.0-1.0): Controls how different frames need to be to be considered key frames, suggested value between 0.5 and 0.8
 - **Frames Per Second**: Number of frames to sample per second
-- **Start/End Time**: Process only a specific portion of the video
+- **Start/End Time** (Video upload only): Process only a specific portion of the video
 - **ASR Model**: Choose between different Whisper models
 - **ASR Device**: Select processing device (suggested: auto)
 - **Frame Comparison Method**: Choose between different frame comparison algorithms
@@ -77,8 +92,9 @@ Default values can be modified in `config.json`.
 transmeet/
 ├── app.py              # Web interface
 ├── transmeet.py        # Core processing logic
-├── compare.py          # Frame comparison functions
-├── images2pdf.py       # PDF generation
+├── utils/
+│   ├── compare.py      # Frame comparison functions
+│   └── images2pdf.py   # PDF generation
 ├── config.json         # Configuration file
 ├── requirements.txt    # Python dependencies
 └── output/            # Processing results
@@ -86,6 +102,7 @@ transmeet/
 
 ## Output Directory Structure
 
+For video upload:
 ```
 output/
 └── video_name/
@@ -93,6 +110,17 @@ output/
     ├── audio.wav      # Extracted audio
     ├── transcript.txt # Generated transcript
     └── slides.pdf     # Generated PDF (optional)
+```
+
+For screen capture:
+```
+output/
+└── screen_capture/
+    └── YYYYMMDD_HHMMSS/  # Timestamp of capture
+        ├── images/        # Captured frames
+        ├── audio.wav      # Recorded audio
+        ├── transcript.txt # Generated transcript
+        └── slides.pdf     # Generated PDF (optional)
 ```
 
 ## License
@@ -104,4 +132,5 @@ This project is licensed under the [MIT License](LICENSE) - see the [LICENSE](LI
 - [wudududu/extract-video-ppt](https://github.com/wudududu/extract-video-ppt/tree/master) for the inspiration and reference
 - [Gradio](https://www.gradio.app/) for the web interface
 - [OpenAI](https://openai.com/) for the Whisper ASR model
+
 

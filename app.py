@@ -1,11 +1,30 @@
 import gradio as gr
 import os
 from pathlib import Path
+import sys
 from transmeet import VideoProcessor
 import json
+import mss
+from utils.images2pdf import images2pdf
+import threading
 import time
-import shutil
-from images2pdf import images2pdf
+import queue
+
+# Setup FFmpeg path
+def get_ffmpeg_path():
+    if getattr(sys, 'frozen', False):
+        # If the application is run as a bundle (exe)
+        application_path = sys._MEIPASS
+    else:
+        # If the application is run from a Python interpreter
+        application_path = os.path.dirname(os.path.abspath(__file__))
+    
+    ffmpeg_path = os.path.join(application_path, 'ffmpeg', 'bin')
+    if os.path.exists(ffmpeg_path):
+        os.environ["PATH"] = ffmpeg_path + os.pathsep + os.environ["PATH"]
+
+# Initialize FFmpeg path
+get_ffmpeg_path()
 
 # Load configuration
 with open('config.json', 'r') as f:
@@ -23,17 +42,12 @@ def process_video(
     progress=gr.Progress()
 ):
     if not video_path:
-        return "Please upload a video file.", None, None, None
+        return "Please upload a video file or use screen capture.", None, None, None
     
     try:
         # Ensure base output directory exists
         output_dir = Path(config['OUTPUT_DIR'])
         output_dir.mkdir(exist_ok=True)
-        
-        # Create video-specific subdirectory
-        video_name = Path(video_path).stem
-        video_output_dir = output_dir / video_name
-        video_output_dir.mkdir(exist_ok=True)
         
         processor = VideoProcessor(
             url=video_path,
@@ -64,21 +78,106 @@ def process_video(
         # Process the video
         processor.process()
         
-        # Get the transcript path
-        transcript_path = video_output_dir / config['OUTPUT_TRANSCRIPT_NAME']
-        
-        # Read the transcript
-        with open(transcript_path, 'r', encoding='utf-8') as f:
-            transcript = f.read()
+        # Get the transcript path if video was processed
+        transcript = ""
+        if video_path:
+            transcript_path = processor.output_path / config['OUTPUT_TRANSCRIPT_NAME']
+            if transcript_path.exists():
+                with open(transcript_path, 'r', encoding='utf-8') as f:
+                    transcript = f.read()
             
         # Get all generated images
-        images_path = video_output_dir / 'images'
+        images_path = processor.images_path
         image_files = sorted(list(images_path.glob('*.jpg')))
         
-        return [str(img) for img in image_files], transcript, str(video_output_dir), "Processing completed! Please click 'Results & Export' tab to view results."
+        return [str(img) for img in image_files], transcript, str(processor.output_path), "Processing completed! Please click 'Results & Export' tab to view results."
         
     except Exception as e:
         return [], f"Error processing video: {str(e)}", None, None
+
+def capture_screen(
+    capture_type,
+    monitor_selection,
+    window_title,
+    similarity_threshold=config['SIMILARITY_THRESHOLD'],
+    fps_sample=config['FRAMES_PER_SECOND'],
+    compare_method=config['COMPARE_METHOD'],
+    progress=gr.Progress()
+):
+    try:
+        # Get monitor index from selection if using monitor capture
+        monitor_index = None
+        if capture_type == "Monitor":
+            with mss.mss() as sct:
+                monitor_choices = {f"Monitor {i}: {m['width']}x{m['height']}": i 
+                                for i, m in enumerate(sct.monitors)}
+                monitor_index = monitor_choices[monitor_selection]
+                if monitor_index >= len(sct.monitors):
+                    raise VideoProcessingError(f"Monitor index {monitor_index} is not available")
+        elif capture_type == "Window" and not window_title:
+            raise VideoProcessingError("Please enter a window title for window capture mode")
+        
+        # Ensure base output directory exists
+        output_dir = Path(config['OUTPUT_DIR'])
+        output_dir.mkdir(exist_ok=True)
+        
+        processor = VideoProcessor(
+            url=None,  # No video file for screen capture
+            output_path=output_dir,
+            similarity_threshold=float(similarity_threshold),
+            fps_sample=int(fps_sample),
+            compare_method=compare_method,
+            export_pdf=False
+        )
+        
+        # Create a queue for status updates
+        status_queue = queue.Queue()
+        
+        # Create a progress tracker
+        class StageProgress:
+            def __init__(self, progress_callback):
+                self.progress_callback = progress_callback
+                self.current_stage = "Capturing screen"
+                
+            def update(self, progress_value, desc):
+                self.current_stage = desc
+                self.progress_callback(progress_value, desc=desc)
+        
+        stage_progress = StageProgress(progress)
+        processor._progress_callback = stage_progress.update
+        
+        # Start screen capture in a separate thread
+        def capture_thread():
+            try:
+                # Start screen capture based on capture type
+                if capture_type == "Monitor":
+                    processor.capture_screen(monitor=monitor_index)
+                else:  # Window capture
+                    processor.capture_screen(window_title=window_title)
+            except Exception as e:
+                error_msg = f"Error in capture thread: {str(e)}"
+                print(error_msg)
+                status_queue.put(("error", error_msg))
+        
+        capture_thread = threading.Thread(target=capture_thread, daemon=True)
+        capture_thread.start()
+        
+        # Wait a short time to check for immediate errors
+        time.sleep(0.5)
+        try:
+            # Check if there's an error message in the queue
+            error_status = status_queue.get_nowait()
+            if error_status[0] == "error":
+                return [], "", None, error_status[1], None
+        except queue.Empty:
+            # No error, continue with capture
+            return [], "", str(output_dir), "Screen capture started. Click 'Stop Capture' to finish.", processor
+        
+    except Exception as e:
+        import traceback
+        error_msg = f"Error capturing screen: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)  # Print full error for debugging
+        return [], "", None, f"Error capturing screen: {str(e)}", None
 
 def export_results(output_dir, export_pdf, export_audio, export_transcript):
     try:
@@ -94,6 +193,15 @@ def export_results(output_dir, export_pdf, export_audio, export_transcript):
         audio_path = None
         transcript_path = None
         
+        # For screen capture, we need to find the latest capture directory
+        if output_dir.name == "screen_capture":
+            # Find the latest timestamp directory
+            capture_dirs = [d for d in output_dir.iterdir() if d.is_dir()]
+            if capture_dirs:
+                # Sort by directory name (timestamp) in descending order
+                latest_dir = sorted(capture_dirs, reverse=True)[0]
+                output_dir = latest_dir
+        
         if export_pdf:
             images_path = output_dir / 'images'
             images = sorted(list(images_path.glob('*.jpg')))
@@ -101,7 +209,7 @@ def export_results(output_dir, export_pdf, export_audio, export_transcript):
                 pdf_path = output_dir / config['OUTPUT_PDF_NAME']
                 # Use default frame size from config
                 images2pdf(str(pdf_path), [str(img) for img in images], 
-                         config['VIDEO_WIDTH'], config['VIDEO_HEIGHT'])
+                        config['VIDEO_WIDTH'], config['VIDEO_HEIGHT'])
                 result_files.append(f"PDF generated at {pdf_path}")
                 pdf_path = str(pdf_path)
         
@@ -136,69 +244,134 @@ def reset_config():
 
 # Create the Gradio interface
 with gr.Blocks(title="TransMeet - Video Processing Tool") as demo:
+    # Add global processor state
+    processor_state = gr.State()
+    
     gr.Markdown("""
     # TransMeet
-    ## Video Processing and Transcription Tool
+    ## Online Meeting Processing and Transcription Tool
     """)
     
     with gr.Tabs() as tabs:
-        # First tab for video processing
-        with gr.Tab("Process Video"):
-            gr.Markdown("Upload a video to extract key frames and generate transcript.")
+        # First tab for video processing and screen capture
+        with gr.Tab("Process Video/Screen Capture"):
+            gr.Markdown("Upload a video or capture your screen to extract key frames.")
             with gr.Row():
                 with gr.Column():
-                    video_input = gr.File(label="Upload Video")
+                    with gr.Tab("Video Upload"):
+                        video_input = gr.File(label="Upload Video")
+                        with gr.Accordion("Configuration", open=False):
+                            with gr.Row():
+                                similarity_threshold = gr.Slider(
+                                    minimum=0.0,
+                                    maximum=1.0,
+                                    value=config['SIMILARITY_THRESHOLD'],
+                                    step=0.01,
+                                    label="Similarity Threshold"
+                                )
+                                fps_sample = gr.Number(
+                                    value=config['FRAMES_PER_SECOND'],
+                                    label="Frames Per Second",
+                                    precision=0
+                                )
+                            
+                            with gr.Row():
+                                start_time = gr.Textbox(
+                                    value=config['START_TIME'],
+                                    label="Start Time (HH:MM:SS)"
+                                )
+                                end_time = gr.Textbox(
+                                    value=config['END_TIME'],
+                                    label="End Time (HH:MM:SS)"
+                                )
+                            
+                            with gr.Row():
+                                asr_model = gr.Dropdown(
+                                    choices=["whisper-base", "whisper-large-v3-turbo"],
+                                    value=config['ASR_MODEL'],
+                                    label="ASR Model"
+                                )
+                                asr_device = gr.Dropdown(
+                                    choices=["auto", "cuda", "cpu"],
+                                    value=config['ASR_DEVICE'],
+                                    label="ASR Device"
+                                )
+                            
+                            compare_method = gr.Dropdown(
+                                choices=["histogram", "dhash", "phash"],
+                                value=config['COMPARE_METHOD'],
+                                label="Frame Comparison Method"
+                            )
+                            
+                            reset_btn = gr.Button("Reset to Default")
+                        
+                        process_btn = gr.Button("Process Video", variant="primary")
                     
-                    with gr.Accordion("Configuration", open=False):
-                        with gr.Row():
-                            similarity_threshold = gr.Slider(
-                                minimum=0.0,
-                                maximum=1.0,
-                                value=config['SIMILARITY_THRESHOLD'],
-                                step=0.01,
-                                label="Similarity Threshold"
-                            )
-                            fps_sample = gr.Number(
-                                value=config['FRAMES_PER_SECOND'],
-                                label="Frames Per Second",
-                                precision=0
-                            )
+                    with gr.Tab("Screen Capture"):
+                        # Get available monitors
+                        with mss.mss() as sct:
+                            monitor_choices = {f"Monitor {i}: {m['width']}x{m['height']}": i 
+                                            for i, m in enumerate(sct.monitors)}
                         
-                        with gr.Row():
-                            start_time = gr.Textbox(
-                                value=config['START_TIME'],
-                                label="Start Time (HH:MM:SS)"
-                            )
-                            end_time = gr.Textbox(
-                                value=config['END_TIME'],
-                                label="End Time (HH:MM:SS)"
-                            )
-                        
-                        with gr.Row():
-                            asr_model = gr.Dropdown(
-                                choices=["whisper-base", "whisper-large-v3-turbo", "whisper-large-v3-zh"],
-                                value=config['ASR_MODEL'],
-                                label="ASR Model"
-                            )
-                            asr_device = gr.Dropdown(
-                                choices=["auto", "cuda", "cpu"],
-                                value=config['ASR_DEVICE'],
-                                label="ASR Device"
-                            )
-                        
-                        compare_method = gr.Dropdown(
-                            choices=["histogram", "dhash", "phash"],
-                            value=config['COMPARE_METHOD'],
-                            label="Frame Comparison Method"
+                        capture_type = gr.Radio(
+                            choices=["Monitor", "Window"],
+                            value="Monitor",
+                            label="Capture Type"
                         )
                         
-                        reset_btn = gr.Button("Reset to Default")
+                        monitor_select = gr.Dropdown(
+                            choices=list(monitor_choices.keys()),
+                            value=list(monitor_choices.keys())[0] if monitor_choices else None,
+                            label="Select Monitor"
+                        )
+                        
+                        window_title_input = gr.Textbox(
+                            label="Window Title (or part of it)",
+                            placeholder="Enter window title to capture"
+                        )
+                        
+                        with gr.Accordion("Configuration", open=False):
+                            with gr.Row():
+                                similarity_threshold_capture = gr.Slider(
+                                    minimum=0.0,
+                                    maximum=1.0,
+                                    value=config['SIMILARITY_THRESHOLD'],
+                                    step=0.01,
+                                    label="Similarity Threshold"
+                                )
+                                fps_sample_capture = gr.Number(
+                                    value=config['FRAMES_PER_SECOND'],
+                                    label="Frames Per Second",
+                                    precision=0
+                                )
+                            
+                            with gr.Row():
+                                asr_model_capture = gr.Dropdown(
+                                    choices=["whisper-base", "whisper-large-v3-turbo", "whisper-large-v3-zh"],
+                                    value=config['ASR_MODEL'],
+                                    label="ASR Model"
+                                )
+                                asr_device_capture = gr.Dropdown(
+                                    choices=["auto", "cuda", "cpu"],
+                                    value=config['ASR_DEVICE'],
+                                    label="ASR Device"
+                                )
+                            
+                            compare_method_capture = gr.Dropdown(
+                                choices=["histogram", "dhash", "phash"],
+                                value=config['COMPARE_METHOD'],
+                                label="Frame Comparison Method"
+                            )
+                            
+                            reset_btn_capture = gr.Button("Reset to Default")
+                        
+                        with gr.Row():
+                            start_capture_btn = gr.Button("Start Capture", variant="primary")
+                            stop_capture_btn = gr.Button("Stop Capture", variant="secondary")
                     
-                    process_btn = gr.Button("Process Video", variant="primary")
                     process_status = gr.Textbox(label="Status", interactive=False)
+                    output_dir = gr.State()
             
-            output_dir = gr.State()
-        
         # Second tab for results and export
         with gr.Tab("Results & Export", id="results_tab"):
             gr.Markdown("Review extracted frames and transcript, then choose what to export.")
@@ -232,6 +405,18 @@ with gr.Blocks(title="TransMeet - Video Processing Tool") as demo:
         ]
     )
     
+    reset_btn_capture.click(
+        fn=reset_config,
+        inputs=[],
+        outputs=[
+            similarity_threshold_capture,
+            fps_sample_capture,
+            asr_model_capture,
+            asr_device_capture,
+            compare_method_capture
+        ]
+    )
+    
     process_btn.click(
         fn=process_video,
         inputs=[
@@ -244,6 +429,75 @@ with gr.Blocks(title="TransMeet - Video Processing Tool") as demo:
             asr_device,
             compare_method
         ],
+        outputs=[
+            output_gallery,
+            output_transcript,
+            output_dir,
+            process_status
+        ]
+    )
+    
+    def start_capture(*args):
+        global current_processor
+        try:
+            # Create new processor instance
+            result = capture_screen(*args)
+            if len(result) == 5:  # Unpack the result
+                images, transcript, output_dir, status, processor = result
+                current_processor = processor
+                return images, transcript, output_dir, status
+            return None, None, None, "Failed to start capture"
+        except Exception as e:
+            return None, None, None, f"Error starting capture: {str(e)}"
+    
+    def stop_capture():
+        global current_processor
+        try:
+            if current_processor and hasattr(current_processor, 'stop_capture'):
+                # First stop the capture
+                current_processor.stop_capture()
+                
+                # Get the results
+                if current_processor.images_path and current_processor.images_path.exists():
+                    image_files = sorted(list(current_processor.images_path.glob('*.jpg')))
+                    
+                    # Process audio transcription
+                    audio_path = current_processor.images_path.parent / config['OUTPUT_AUDIO_NAME']
+                    if audio_path.exists():
+                        transcript = current_processor.transcribe_audio(
+                            audio_path, 
+                            current_processor.images_path.parent
+                        )
+                    else:
+                        transcript = "No audio file found"
+                    
+                    return [str(img) for img in image_files], transcript, str(current_processor.images_path.parent), "Capture completed! Please click 'Results & Export' tab to view results."
+                return None, None, None, "Capture stopped but no results were found."
+            return None, None, None, "No active capture to stop."
+        except Exception as e:
+            return None, None, None, f"Error stopping capture: {str(e)}"
+    
+    start_capture_btn.click(
+        fn=start_capture,
+        inputs=[
+            capture_type,
+            monitor_select,
+            window_title_input,
+            similarity_threshold_capture,
+            fps_sample_capture,
+            compare_method_capture
+        ],
+        outputs=[
+            output_gallery,
+            output_transcript,
+            output_dir,
+            process_status
+        ]
+    )
+    
+    stop_capture_btn.click(
+        fn=stop_capture,
+        inputs=[],
         outputs=[
             output_gallery,
             output_transcript,
@@ -269,4 +523,5 @@ with gr.Blocks(title="TransMeet - Video Processing Tool") as demo:
     )
 
 if __name__ == "__main__":
+    # demo.launch(share=True)
     demo.launch()

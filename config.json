@@ -1,7 +1,7 @@
 {
     "TEMP_DIR": "./.extract-video-ppt-tmp-data",
     "OUTPUT_PDF_NAME": "output.pdf",
-    "OUTPUT_AUDIO_NAME": "audio.mp3",
+    "OUTPUT_AUDIO_NAME": "audio.wav",
     "OUTPUT_TRANSCRIPT_NAME": "transcript.txt",
     "OUTPUT_DIR": "output",
     "SIMILARITY_THRESHOLD": 0.7,

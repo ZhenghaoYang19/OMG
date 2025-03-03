@@ -2,21 +2,25 @@
 
 [English](README.md) | 简体中文
 
-TransMeet 是一个用于处理会议录像的工具，可以提取关键帧并生成文字记录。它提供了基于 Gradio 构建的友好的 Web 界面。
+TransMeet 是一个用于处理会议录像的工具，可以提取关键帧并生成文字记录。它使用 Gradio 构建了一个用户友好的 Web 界面。
 
 ## 功能特点
 
+- 两种输入模式：
+  - 视频文件上传：处理预录制的视频
+  - 屏幕捕获：实时捕获和处理屏幕内容
 - 基于内容相似度提取视频关键帧
 - 使用 OpenAI Whisper 模型生成文字记录
 - 支持导出 PDF、音频和文本文件
 - 用户友好的 Web 界面
 - 可配置的处理参数
 - 支持多种视频格式
+- 极致压缩，实测将2.48G视频压缩到321M
 
 ## 系统要求
 
 - Python 3.8 或更高版本
-- CUDA 兼容的 GPU（可选，用于加速处理）
+- CUDA 兼容的 GPU（可选，用于加快处理速度）
 - FFmpeg（用于音频处理）
 
 ## 安装说明
@@ -46,11 +50,22 @@ python app.py
 
 2. 在浏览器中访问 `http://localhost:7860`
 
-3. 处理视频：
+3. 选择输入模式：
+
+   ### 视频上传
    - 上传视频文件
    - 调整配置参数（可选）
    - 点击"Process Video"
    - 等待处理完成
+   - 切换到"Results & Export"标签页查看结果
+
+   ### 屏幕捕获
+   - 选择捕获类型（显示器或窗口）
+   - 显示器捕获：从下拉菜单选择显示器
+   - 窗口捕获：输入窗口标题（或部分标题）(例如：chrome, edge, 腾讯会议)
+   - 调整配置参数（可选）
+   - 点击"Start Capture"开始捕获
+   - 完成后点击"Stop Capture"停止捕获
    - 切换到"Results & Export"标签页查看结果
 
 4. 导出结果：
@@ -62,9 +77,9 @@ python app.py
 
 你可以调整以下参数：
 
-- **相似度阈值**（0.0-1.0）：控制帧与帧之间需要多大的差异才被认为是关键帧，建议值在 0.5 到 0.8 之间
+- **相似度阈值**（0.0-1.0）：控制帧与帧之间需要多大的差异才被视为关键帧，建议值在 0.5 到 0.8 之间
 - **每秒采样帧数**：每秒钟采样的帧数
-- **开始/结束时间**：只处理视频的特定部分
+- **开始/结束时间**（仅视频上传）：只处理视频的特定部分
 - **ASR 模型**：选择不同的 Whisper 模型
 - **ASR 设备**：选择处理设备（建议：auto）
 - **帧比较方法**：选择不同的帧比较算法
@@ -77,8 +92,9 @@ python app.py
 transmeet/
 ├── app.py              # Web 界面
 ├── transmeet.py        # 核心处理逻辑
-├── compare.py          # 帧比较函数
-├── images2pdf.py       # PDF 生成
+├── utils/
+│   ├── compare.py      # 帧比较函数
+│   └── images2pdf.py   # PDF 生成
 ├── config.json         # 配置文件
 ├── requirements.txt    # Python 依赖
 └── output/            # 处理结果
@@ -86,6 +102,7 @@ transmeet/
 
 ## 输出目录结构
 
+视频上传模式：
 ```
 output/
 └── video_name/
@@ -95,7 +112,18 @@ output/
     └── slides.pdf     # 生成的 PDF（可选）
 ```
 
-## 开源许可
+屏幕捕获模式：
+```
+output/
+└── screen_capture/
+    └── YYYYMMDD_HHMMSS/  # 捕获的时间戳
+        ├── images/        # 捕获的帧
+        ├── audio.wav      # 录制的音频
+        ├── transcript.txt # 生成的文字记录
+        └── slides.pdf     # 生成的 PDF（可选）
+```
+
+## 许可证
 
 本项目采用 [MIT 许可证](LICENSE) - 详见 [LICENSE](LICENSE) 文件。
 

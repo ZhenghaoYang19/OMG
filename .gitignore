@@ -21,6 +21,9 @@ wheels/
 .installed.cfg
 *.egg
 
+# Build script
+build.py
+
 # Virtual Environment
 venv/
 ENV/
@@ -41,6 +44,8 @@ exports/
 *.pdf
 *.jpg
 *.png
+ffmpeg/
+.gradio/
 
 # Logs
 *.log
