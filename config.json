@@ -1,0 +1,16 @@
+{
+    "TEMP_DIR": "./.extract-video-ppt-tmp-data",
+    "OUTPUT_PDF_NAME": "output.pdf",
+    "OUTPUT_AUDIO_NAME": "audio.mp3",
+    "OUTPUT_TRANSCRIPT_NAME": "transcript.txt",
+    "OUTPUT_DIR": "output",
+    "SIMILARITY_THRESHOLD": 0.7,
+    "FRAMES_PER_SECOND": 2,
+    "VIDEO_WIDTH": 1920,
+    "VIDEO_HEIGHT": 1080,
+    "COMPARE_METHOD": "histogram",
+    "ASR_MODEL": "whisper-large-v3-turbo",
+    "ASR_DEVICE": "auto", 
+    "END_TIME": "INFINITY",
+    "START_TIME": "00:00:00"
+}
