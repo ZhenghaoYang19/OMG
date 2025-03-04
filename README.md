@@ -19,7 +19,7 @@ TransMeet is a tool for processing meeting recordings, extracting key frames, an
 
 ## Requirements
 
-- Python 3.8 or higher
+- Python>=3.8 (tested on 3.12) 
 - CUDA-compatible GPU (optional, for faster processing)
 - FFmpeg (for audio processing)
 
@@ -77,7 +77,7 @@ python app.py
 
 You can adjust the following parameters:
 
-- **Similarity Threshold** (0.0-1.0): Controls how different frames need to be to be considered key frames, suggested value between 0.5 and 0.8
+- **Similarity Threshold** (0.0-1.0): Controls how different frames need to be to be considered key frames, suggested value between 0.6 and 0.7
 - **Frames Per Second**: Number of frames to sample per second
 - **Start/End Time** (Video upload only): Process only a specific portion of the video
 - **ASR Model**: Choose between different Whisper models

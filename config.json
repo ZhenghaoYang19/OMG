@@ -5,7 +5,7 @@
     "OUTPUT_TRANSCRIPT_NAME": "transcript.txt",
     "OUTPUT_DIR": "output",
     "SIMILARITY_THRESHOLD": 0.7,
-    "FRAMES_PER_SECOND": 2,
+    "FRAMES_PER_SECOND": 1,
     "VIDEO_WIDTH": 1920,
     "VIDEO_HEIGHT": 1080,
     "COMPARE_METHOD": "histogram",

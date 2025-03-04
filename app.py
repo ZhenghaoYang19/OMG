@@ -259,6 +259,54 @@ def reset_config():
         config['COMPARE_METHOD']
     )
 
+def delete_selected_images(selected_index, image_paths, output_directory):
+    """Delete selected image and return updated image list and status"""
+    if selected_index is None:
+        return image_paths, "No image selected for deletion"
+    
+    try:
+        # Convert paths to Path objects
+        image_paths = [Path(p) if isinstance(p, str) else Path(p[0]) for p in image_paths]
+        
+        # Get the original image directory
+        output_dir = Path(output_directory)
+        images_dir = output_dir / 'images'
+        original_images = sorted(list(images_dir.glob('*.jpg')))
+        
+        # Delete the selected image
+        if 0 <= selected_index < len(original_images):
+            image_path = original_images[selected_index]
+            temp_path = image_paths[selected_index]
+            if image_path.exists():
+                image_path.unlink()
+                print(f"Deleted image: {image_path}")
+                status_msg = (
+                    f"Successfully deleted image at position {selected_index + 1}\n"
+                    f"Original path: {image_path}\n"
+                    f"Temporary path: {temp_path}"
+                )
+        
+        # Get updated list of images
+        remaining_images = sorted(list(images_dir.glob('*.jpg')))
+        return [str(img) for img in remaining_images], status_msg
+    except Exception as e:
+        import traceback
+        print(f"Error in delete_selected_images:\n{traceback.format_exc()}")
+        return image_paths, f"Error deleting image: {str(e)}"
+
+def save_transcript(transcript_text, output_directory):
+    """Save modified transcript and return status"""
+    try:
+        output_dir = Path(output_directory)
+        transcript_path = output_dir / config['OUTPUT_TRANSCRIPT_NAME']
+        
+        with open(transcript_path, 'w', encoding='utf-8') as f:
+            f.write(transcript_text)
+            
+        return "Transcript saved successfully"
+    except Exception as e:
+        return f"Error saving transcript: {str(e)}"
+
 # Create the Gradio interface
 with gr.Blocks(title="TransMeet - Video Processing Tool") as demo:
     # Add global processor state
@@ -391,11 +439,47 @@ with gr.Blocks(title="TransMeet - Video Processing Tool") as demo:
             
         # Second tab for results and export
         with gr.Tab("Results & Export", id="results_tab"):
-            gr.Markdown("Review extracted frames and transcript, then choose what to export.")
+            gr.Markdown("Review and edit extracted frames and transcript, then choose what to export.")
             with gr.Row():
                 with gr.Column():
-                    output_gallery = gr.Gallery(label="Extracted Frames")
-                    output_transcript = gr.Textbox(label="Transcript", lines=10)
+                    # Make gallery interactive with multiple selection
+                    output_gallery = gr.Gallery(
+                        label="Extracted Frames",
+                        show_label=True,
+                        elem_id="gallery",
+                        columns=[4],
+                        allow_preview=True,
+                        preview=True,
+                        height="auto",
+                        object_fit="contain",
+                        interactive=True,
+                        type="filepath",
+                        selected_index=None  # Allow deselection
+                    )
+
+                    # Separate status displays for images and transcript
+                    image_status = gr.Textbox(
+                        label="Image Operation Status", 
+                        interactive=False,
+                        value="Ready"
+                    )
+
+                    delete_btn = gr.Button("Delete Selected Images", variant="secondary")
+                    
+                    # Make transcript editable
+                    output_transcript = gr.Textbox(
+                        label="Transcript", 
+                        lines=10,
+                        interactive=True
+                    )
+                    transcript_status = gr.Textbox(
+                        label="Transcript Operation Status", 
+                        interactive=False,
+                        value="Ready"
+                    )
+                    
+                    save_transcript_btn = gr.Button("Save Transcript", variant="secondary")
+                    
                     with gr.Row():
                         export_pdf = gr.Checkbox(label="Export PDF", value=True)
                         export_audio = gr.Checkbox(label="Export Audio", value=False)
@@ -406,7 +490,7 @@ with gr.Blocks(title="TransMeet - Video Processing Tool") as demo:
                         pdf_download = gr.File(label="Download PDF")
                         audio_download = gr.File(label="Download Audio")
                         transcript_download = gr.File(label="Download Transcript")
-    
+
     # Connect the components
     reset_btn.click(
         fn=reset_config,
@@ -537,6 +621,38 @@ with gr.Blocks(title="TransMeet - Video Processing Tool") as demo:
             transcript_download,
             export_result
         ]
+    )
+
+    # Add this function to handle selection
+    def update_selected(evt: gr.SelectData):
+        """Handle gallery selection event"""
+        return evt.index
+
+    # In the Results & Export tab, after output_gallery definition:
+    selected_index = gr.State(None)  # Store the selected index
+
+    # Connect the selection event
+    output_gallery.select(
+        fn=update_selected,
+        inputs=[],
+        outputs=selected_index
+    )
+
+    # Update delete button click handler
+    delete_btn.click(
+        fn=delete_selected_images,
+        inputs=[
+            selected_index,
+            output_gallery,
+            output_dir
+        ],
+        outputs=[output_gallery, image_status]
+    )
+    
+    save_transcript_btn.click(
+        fn=save_transcript,
+        inputs=[output_transcript, output_dir],
+        outputs=[transcript_status]
     )
 
 if __name__ == "__main__":
