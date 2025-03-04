@@ -13,7 +13,6 @@ import threading
 import queue
 import sounddevice as sd
 import soundfile as sf
-import numpy as np
 
 from utils.compare_images import compare_images
 from utils.images2pdf import images2pdf
@@ -113,9 +112,12 @@ class VideoProcessor:
 
                 if is_write:
                     timestamp = second2hms(processed_frames / self.fps_sample)
-                    name = self.images_path / f'frame{timestamp}-{str(similarity)}.jpg'
-                    if not cv2.imwrite(str(name), frame):
-                        raise VideoProcessingError('Failed to write image file')
+                    name = self.images_path / f'{timestamp}-{str(similarity)}.jpg'
+                    success, img_encoded = cv2.imencode('.jpg', frame)
+                    if success:
+                        img_encoded.tofile(str(name))
+                    else:
+                        raise VideoProcessingError(f'Failed to write image file: {name}')
                     last_frame = frame
                 
                 if total_frames:

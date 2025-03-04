@@ -42,7 +42,7 @@ def process_video(
     progress=gr.Progress()
 ):
     if not video_path:
-        return "Please upload a video file or use screen capture.", None, None, None
+        return [], "", None, "Please upload a video file or use screen capture."
     
     try:
         # Ensure base output directory exists
@@ -59,7 +59,7 @@ def process_video(
             asr_model=asr_model,
             asr_device=asr_device,
             compare_method=compare_method,
-            export_pdf=False  # Don't export PDF during initial processing
+            export_pdf=False
         )
         
         # Create a progress tracker that maintains separate progress for each stage
@@ -93,7 +93,9 @@ def process_video(
         return [str(img) for img in image_files], transcript, str(processor.output_path), "Processing completed! Please click 'Results & Export' tab to view results."
         
     except Exception as e:
-        return [], f"Error processing video: {str(e)}", None, None
+        import traceback
+        print(f"\nError processing video:\n{traceback.format_exc()}")
+        return [], "", None, f"Error: {str(e)}"
 
 def capture_screen(
     capture_type,
@@ -113,9 +115,9 @@ def capture_screen(
                                 for i, m in enumerate(sct.monitors)}
                 monitor_index = monitor_choices[monitor_selection]
                 if monitor_index >= len(sct.monitors):
-                    raise VideoProcessingError(f"Monitor index {monitor_index} is not available")
+                    raise ValueError(f"Monitor index {monitor_index} is not available")
         elif capture_type == "Window" and not window_title:
-            raise VideoProcessingError("Please enter a window title for window capture mode")
+            raise ValueError("Please enter a window title for window capture mode")
         
         # Ensure base output directory exists
         output_dir = Path(config['OUTPUT_DIR'])
@@ -175,9 +177,8 @@ def capture_screen(
         
     except Exception as e:
         import traceback
-        error_msg = f"Error capturing screen: {str(e)}\n{traceback.format_exc()}"
-        print(error_msg)  # Print full error for debugging
-        return [], "", None, f"Error capturing screen: {str(e)}", None
+        print(f"\nError in screen capture:\n{traceback.format_exc()}")
+        return [], "", None, f"Error: {str(e)}", None
 
 def export_results(output_dir, export_pdf, export_audio, export_transcript):
     try:
