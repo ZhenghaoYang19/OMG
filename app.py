@@ -188,7 +188,7 @@ def export_results(output_dir, export_pdf, export_audio, export_transcript):
         if not output_dir.exists():
             return None, None, None, "Output directory not found."
         
-        result_files = []
+        result_messages = []
         pdf_path = None
         audio_path = None
         transcript_path = None
@@ -202,30 +202,46 @@ def export_results(output_dir, export_pdf, export_audio, export_transcript):
                 latest_dir = sorted(capture_dirs, reverse=True)[0]
                 output_dir = latest_dir
         
+        # Export PDF
         if export_pdf:
-            images_path = output_dir / 'images'
-            images = sorted(list(images_path.glob('*.jpg')))
-            if images:
-                pdf_path = output_dir / config['OUTPUT_PDF_NAME']
-                # Use default frame size from config
-                images2pdf(str(pdf_path), [str(img) for img in images], 
-                        config['VIDEO_WIDTH'], config['VIDEO_HEIGHT'])
-                result_files.append(f"PDF generated at {pdf_path}")
-                pdf_path = str(pdf_path)
+            try:
+                images_path = output_dir / 'images'
+                images = sorted(list(images_path.glob('*.jpg')))
+                if images:
+                    pdf_path = output_dir / config['OUTPUT_PDF_NAME']
+                    # Use default frame size from config
+                    images2pdf(str(pdf_path), [str(img) for img in images], 
+                            config['VIDEO_WIDTH'], config['VIDEO_HEIGHT'])
+                    result_messages.append(f"PDF generated at {pdf_path}")
+                    pdf_path = str(pdf_path)
+            except Exception as e:
+                result_messages.append(f"PDF export failed: {str(e)}")
         
+        # Export Audio
         if export_audio:
-            audio_file = output_dir / config['OUTPUT_AUDIO_NAME']
-            if audio_file.exists():
-                audio_path = str(audio_file)
-                result_files.append(f"Audio file ready at {audio_file}")
+            try:
+                audio_file = output_dir / config['OUTPUT_AUDIO_NAME']
+                if audio_file.exists():
+                    audio_path = str(audio_file)
+                    result_messages.append(f"Audio file ready at {audio_file}")
+                else:
+                    result_messages.append("Audio file not found")
+            except Exception as e:
+                result_messages.append(f"Audio export failed: {str(e)}")
         
+        # Export Transcript
         if export_transcript:
-            transcript_file = output_dir / config['OUTPUT_TRANSCRIPT_NAME']
-            if transcript_file.exists():
-                transcript_path = str(transcript_file)
-                result_files.append(f"Transcript file ready at {transcript_file}")
+            try:
+                transcript_file = output_dir / config['OUTPUT_TRANSCRIPT_NAME']
+                if transcript_file.exists():
+                    transcript_path = str(transcript_file)
+                    result_messages.append(f"Transcript file ready at {transcript_file}")
+                else:
+                    result_messages.append("Transcript file not found")
+            except Exception as e:
+                result_messages.append(f"Transcript export failed: {str(e)}")
         
-        message = "No files selected for export." if not result_files else "\n".join(result_files)
+        message = "No files selected for export." if not result_messages else "\n".join(result_messages)
         return pdf_path, audio_path, transcript_path, message
         
     except Exception as e:

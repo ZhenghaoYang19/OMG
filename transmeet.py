@@ -355,7 +355,7 @@ class VideoProcessor:
                     raise
 
             if self._progress_callback:
-                self._progress_callback(0.3, "Loading ASR model...")
+                self._progress_callback(0.3, "Loading ASR model...First download needs some time")
 
             # Determine device
             if self.asr_device == "auto":
