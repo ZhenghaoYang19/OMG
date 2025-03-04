@@ -308,13 +308,13 @@ def save_transcript(transcript_text, output_directory):
         return f"Error saving transcript: {str(e)}"
 
 # Create the Gradio interface
-with gr.Blocks(title="TransMeet - Video Processing Tool") as demo:
+with gr.Blocks(title="OMG - Online Meeting Guru") as demo:
     # Add global processor state
     processor_state = gr.State()
     
     gr.Markdown("""
-    # TransMeet
-    ## Online Meeting Processing and Transcription Tool
+    # OMG
+    ## Online Meeting Guru: Extract Key Frames and Generate Transcripts
     """)
     
     with gr.Tabs() as tabs:
