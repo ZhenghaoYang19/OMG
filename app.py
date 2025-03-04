@@ -2,7 +2,7 @@ import gradio as gr
 import os
 from pathlib import Path
 import sys
-from transmeet import VideoProcessor
+from omg import VideoProcessor
 import json
 import mss
 from utils.images2pdf import images2pdf
@@ -55,7 +55,7 @@ def process_video(
             similarity_threshold=float(similarity_threshold),
             start_time=start_time,
             end_time=end_time,
-            fps_sample=int(fps_sample),
+            fps_sample=fps_sample, 
             asr_model=asr_model,
             asr_device=asr_device,
             compare_method=compare_method,
@@ -127,7 +127,7 @@ def capture_screen(
             url=None,  # No video file for screen capture
             output_path=output_dir,
             similarity_threshold=float(similarity_threshold),
-            fps_sample=int(fps_sample),
+            fps_sample=fps_sample,
             compare_method=compare_method,
             export_pdf=False
         )
@@ -337,7 +337,9 @@ with gr.Blocks(title="TransMeet - Video Processing Tool") as demo:
                                 fps_sample = gr.Number(
                                     value=config['FRAMES_PER_SECOND'],
                                     label="Frames Per Second",
-                                    precision=0
+                                    precision=2,
+                                    minimum=0.1,
+                                    step=0.1
                                 )
                             
                             with gr.Row():
@@ -407,12 +409,14 @@ with gr.Blocks(title="TransMeet - Video Processing Tool") as demo:
                                 fps_sample_capture = gr.Number(
                                     value=config['FRAMES_PER_SECOND'],
                                     label="Frames Per Second",
-                                    precision=0
+                                    precision=2,
+                                    minimum=0.1,
+                                    step=0.1
                                 )
                             
                             with gr.Row():
                                 asr_model_capture = gr.Dropdown(
-                                    choices=["whisper-base", "whisper-large-v3-turbo", "whisper-large-v3-zh"],
+                                    choices=["whisper-base", "whisper-large-v3-turbo"],
                                     value=config['ASR_MODEL'],
                                     label="ASR Model"
                                 )

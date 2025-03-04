@@ -3,7 +3,7 @@ click
 tqdm
 openai-whisper>=20231117
 Pillow
-gradio==5.20
+gradio==5.20.0
 torch
 numpy
 fpdf

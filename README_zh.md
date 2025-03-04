@@ -1,8 +1,8 @@
-# TransMeet
+# OMG (Online Meeting Guru)
 
 [English](README.md) | 简体中文
 
-TransMeet 是一个用于处理会议录像的工具，可以提取关键帧并生成文字记录。它使用 Gradio 构建了一个用户友好的 Web 界面。
+OMG 是一个用于处理会议录像(或屏幕截图)的工具，可以提取关键帧并生成文字记录。它使用 Gradio 构建了一个轻量化的现代界面。
 
 ## 功能特点
 
@@ -11,15 +11,14 @@ TransMeet 是一个用于处理会议录像的工具，可以提取关键帧并�
   - 屏幕捕获：实时捕获和处理屏幕内容
 - 基于内容相似度提取视频关键帧
 - 使用 OpenAI Whisper 模型生成文字记录
+- 导出前支持手动编辑提取的图片和文字记录
 - 支持导出 PDF、音频和文本文件
-- 用户友好的 Web 界面
-- 可配置的处理参数
-- 支持多种视频格式
+- 使用 Gradio 构建的轻量化的现代界面
 - 极致压缩，实测将2.48G视频压缩到321M
 
 ## 系统要求
 
-- Python>=3.8 (测试在3.12) 
+- Python>=3.8 (在3.12下测试) 
 - CUDA 兼容的 GPU（可选，用于加快处理速度）
 - FFmpeg（用于音频处理）
 
@@ -27,8 +26,8 @@ TransMeet 是一个用于处理会议录像的工具，可以提取关键帧并�
 
 1. 克隆仓库：
 ```bash
-git clone https://github.com/ZhenghaoYang19/transmeet.git
-cd transmeet
+git clone https://github.com/ZhenghaoYang19/omg.git
+cd omg
 ```
 
 2. 安装依赖：
@@ -78,7 +77,7 @@ python app.py
 你可以调整以下参数：
 
 - **相似度阈值**（0.0-1.0）：控制帧与帧之间需要多大的差异才被视为关键帧，建议值在 0.6 到 0.7 之间
-- **每秒采样帧数**：每秒钟采样的帧数
+- **每秒采样帧数**：每秒钟采样的帧数，建议值在0.2-5之间，如果采样过多就降低，反之亦然
 - **开始/结束时间**（仅视频上传）：只处理视频的特定部分
 - **ASR 模型**：选择不同的 Whisper 模型
 - **ASR 设备**：选择处理设备（建议：auto）
@@ -89,15 +88,15 @@ python app.py
 ## 项目结构
 
 ```
-transmeet/
+omg/
 ├── app.py              # Web 界面
-├── transmeet.py        # 核心处理逻辑
+├── omg.py              # 核心处理逻辑
 ├── utils/
 │   ├── compare.py      # 帧比较函数
 │   └── images2pdf.py   # PDF 生成
 ├── config.json         # 配置文件
 ├── requirements.txt    # Python 依赖
-└── output/            # 处理结果
+└── output/             # 处理结果
 ```
 
 ## 输出目录结构

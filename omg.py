@@ -127,11 +127,14 @@ class VideoProcessor:
 
     def _process_video(self):
         vcap = cv2.VideoCapture(str(self.url))  
-        fps = int(vcap.get(5))
+        fps = vcap.get(5)  # Remove int() to keep original fps as float
         total_frames = int(vcap.get(7))
         self.images_path = self.output_path / 'images'
-        # Calculate frame sampling interval
-        sample_interval = max(1, fps // self.fps_sample)
+        
+        # Calculate frame sampling interval in frames
+        # For example, if fps=30 and self.fps_sample=0.5, interval would be 60 frames
+        print(fps, self.fps_sample)
+        sample_interval = round(fps / self.fps_sample)
 
         if total_frames == 0:
             raise VideoProcessingError('Please check if the video url is correct')
@@ -163,7 +166,7 @@ class VideoProcessor:
             cv2.destroyAllWindows()
         
         # Calculate expected number of frames to process based on sampling interval
-        total_samples = frame_count // sample_interval
+        total_samples = math.ceil(frame_count / sample_interval)  # Use math.ceil for more accurate count
         self._process_frames(frame_generator(), total_samples)
 
     def transcribe_audio(self, audio_path, output_dir):

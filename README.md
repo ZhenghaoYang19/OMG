@@ -1,8 +1,8 @@
-# TransMeet
+# OMG (Online Meeting Guru)
 
 English | [简体中文](README_zh.md)
 
-TransMeet is a tool for processing meeting recordings, extracting key frames, and generating transcripts. It features a user-friendly web interface built with Gradio.
+OMG is a tool for processing meeting recordings (or screen captures), extracting key frames, and generating transcripts. It features a lightweight modern interface built with Gradio.
 
 ## Features
 
@@ -11,10 +11,9 @@ TransMeet is a tool for processing meeting recordings, extracting key frames, an
   - Screen capture: Capture and process screen content in real-time
 - Extract key frames based on content similarity
 - Generate transcripts using OpenAI's Whisper models
+- Support manual editing of extracted frames and transcript before export
 - Export results as PDF, audio, and text files
-- User-friendly web interface
-- Configurable processing parameters
-- Support for multiple video formats
+- Lightweight modern interface built with Gradio
 - Extreme compression, successfully reducing a 2.48GB video to just 321MB
 
 ## Requirements
@@ -27,8 +26,8 @@ TransMeet is a tool for processing meeting recordings, extracting key frames, an
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/ZhenghaoYang19/transmeet.git
-cd transmeet
+git clone https://github.com/ZhenghaoYang19/omg.git
+cd omg
 ```
 
 2. Install dependencies:
@@ -78,7 +77,7 @@ python app.py
 You can adjust the following parameters:
 
 - **Similarity Threshold** (0.0-1.0): Controls how different frames need to be to be considered key frames, suggested value between 0.6 and 0.7
-- **Frames Per Second**: Number of frames to sample per second
+- **Frames Per Second**: Number of frames to sample per second, suggested value between 0.2 and 5
 - **Start/End Time** (Video upload only): Process only a specific portion of the video
 - **ASR Model**: Choose between different Whisper models
 - **ASR Device**: Select processing device (suggested: auto)
@@ -89,9 +88,9 @@ Default values can be modified in `config.json`.
 ## Project Structure
 
 ```
-transmeet/
+omg/
 ├── app.py              # Web interface
-├── transmeet.py        # Core processing logic
+├── omg.py        # Core processing logic
 ├── utils/
 │   ├── compare.py      # Frame comparison functions
 │   └── images2pdf.py   # PDF generation

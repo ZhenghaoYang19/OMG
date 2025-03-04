@@ -46,6 +46,7 @@ exports/
 *.png
 ffmpeg/
 .gradio/
+_test.py
 
 # Logs
 *.log
