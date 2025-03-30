@@ -2,11 +2,16 @@
 
 import cv2
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 import logging
+from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
+# Cache for storing computed hashes
+_hash_cache: Dict[int, List[bool]] = {}
+
+@lru_cache(maxsize=128)
 def to_gray(image: np.ndarray, size: Tuple[int, int]) -> np.ndarray:
     """Convert image to grayscale and resize."""
     return cv2.cvtColor(cv2.resize(image, size), cv2.COLOR_BGR2GRAY)
@@ -14,6 +19,24 @@ def to_gray(image: np.ndarray, size: Tuple[int, int]) -> np.ndarray:
 def hamming_distance(hash1: List[bool], hash2: List[bool]) -> float:
     """Calculate normalized Hamming distance between two hashes."""
     return sum(h1 != h2 for h1, h2 in zip(hash1, hash2)) / len(hash1)
+
+def compute_dhash(image: np.ndarray) -> List[bool]:
+    """Compute difference hash for an image."""
+    # Use image data pointer as cache key
+    cache_key = image.__array_interface__['data'][0]
+    if cache_key in _hash_cache:
+        return _hash_cache[cache_key]
+    
+    # Resize to 9x8 and convert to grayscale
+    resized = to_gray(image, (9, 8))
+    
+    # Calculate difference and build hash
+    diff = resized[:, 1:] > resized[:, :-1]  # 8x8 boolean array
+    hash_value = diff.flatten().tolist()  # 64 bits hash
+    
+    # Cache the result
+    _hash_cache[cache_key] = hash_value
+    return hash_value
 
 def dhash(img1: np.ndarray, img2: np.ndarray) -> float:
     """
@@ -25,29 +48,27 @@ def dhash(img1: np.ndarray, img2: np.ndarray) -> float:
     3. Compute difference hash (compare adjacent pixels)
     4. Compare hashes using Hamming distance
     """
-    def compute_dhash(image: np.ndarray) -> List[bool]:
-        # Resize to 9x8 and convert to grayscale
-        resized = to_gray(image, (9, 8))
-        
-        # Calculate difference and build hash
-        # Compare adjacent pixels in each row (9 pixels -> 8 differences per row)
-        diff = resized[:, 1:] > resized[:, :-1]  # 8x8 boolean array
-        return diff.flatten().tolist()  # 64 bits hash
-    
     return hamming_distance(compute_dhash(img1), compute_dhash(img2))
+
+def compute_phash(image: np.ndarray) -> List[bool]:
+    """Compute perceptual hash for an image."""
+    # Use image data pointer as cache key
+    cache_key = image.__array_interface__['data'][0]
+    if cache_key in _hash_cache:
+        return _hash_cache[cache_key]
+    
+    size = (32, 32)
+    gray = to_gray(image, size)
+    dct = cv2.dct(np.float32(gray))[:8, :8]
+    hash_value = (dct > np.mean(dct)).flatten().tolist()
+    
+    # Cache the result
+    _hash_cache[cache_key] = hash_value
+    return hash_value
 
 def phash(img1: np.ndarray, img2: np.ndarray) -> float:
     """pHash comparison."""
-    size = (32, 32)
-    gray1, gray2 = to_gray(img1, size), to_gray(img2, size)
-    dct1 = cv2.dct(np.float32(gray1))[:8, :8]
-    dct2 = cv2.dct(np.float32(gray2))[:8, :8]
-    
-    # Compute hash from DCT
-    hash1 = (dct1 > np.mean(dct1)).flatten().tolist()
-    hash2 = (dct2 > np.mean(dct2)).flatten().tolist()
-    
-    return hamming_distance(hash1, hash2)
+    return hamming_distance(compute_phash(img1), compute_phash(img2))
 
 def histogram(img1: np.ndarray, img2: np.ndarray) -> float:
     """Histogram comparison."""

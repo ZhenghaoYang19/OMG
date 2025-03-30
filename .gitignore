@@ -44,7 +44,6 @@ exports/
 *.pdf
 *.jpg
 *.png
-ffmpeg/
 .gradio/
 _test.py
 
