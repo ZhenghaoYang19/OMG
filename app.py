@@ -468,7 +468,7 @@ with gr.Blocks(title="OMG - Online Meeting Guru") as demo:
                         preview=True,
                         height="auto",
                         object_fit="contain",
-                        interactive=True,
+                        interactive=False,
                         type="filepath",
                         selected_index=None  # Allow deselection
                     )

@@ -105,7 +105,7 @@ torch==2.5.1+cu121
 torchaudio==2.5.1
 torchvision==0.20.1+cu121
 tqdm==4.66.6
-triton==3.0.0
+
 typer==0.15.2
 typing_extensions==4.12.2
 tzdata==2025.1

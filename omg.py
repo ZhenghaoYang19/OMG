@@ -187,11 +187,15 @@ class VideoProcessor:
             prompt = self.asr_prompt
             result = model.transcribe(str(audio_path), fp16=(device == "cuda"), initial_prompt=prompt)
             
-            # Save transcript
+            # Save transcript with timestamps
             transcript_path = output_dir / config['OUTPUT_TRANSCRIPT_NAME']
             with open(transcript_path, 'w', encoding='utf-8') as f:
-                f.write(result["text"])
-            print(f"Transcript saved to: {transcript_path}")
+                # Write each segment with its timestamp
+                for segment in result['segments']:
+                    start_time = str(datetime.timedelta(seconds=int(segment['start'])))
+                    end_time = str(datetime.timedelta(seconds=int(segment['end'])))
+                    f.write(f"[{start_time} -> {end_time}] {segment['text']}\n")
+            print(f"Transcript with timestamps saved to: {transcript_path}")
             
             return result["text"]
             
