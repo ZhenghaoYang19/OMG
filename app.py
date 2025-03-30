@@ -27,7 +27,7 @@ def get_ffmpeg_path():
 get_ffmpeg_path()
 
 # Load configuration
-with open('config.json', 'r') as f:
+with open('config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
 
 def process_video(
@@ -370,6 +370,12 @@ with gr.Blocks(title="OMG - Online Meeting Guru") as demo:
                                 label="Frame Comparison Method"
                             )
                             
+                            asr_prompt = gr.Textbox(
+                                value=config['ASR_PROMPT'],
+                                label="ASR Prompt (Provide examples of the audio content)",
+                                interactive=True
+                            )
+                            
                             reset_btn = gr.Button("Reset to Default")
                         
                         process_btn = gr.Button("Process Video", variant="primary")
@@ -430,6 +436,12 @@ with gr.Blocks(title="OMG - Online Meeting Guru") as demo:
                                 choices=["histogram", "dhash", "phash"],
                                 value=config['COMPARE_METHOD'],
                                 label="Frame Comparison Method"
+                            )
+                            
+                            asr_prompt_capture = gr.Textbox(
+                                value=config['ASR_PROMPT'],
+                                label="ASR Prompt (Provide examples of the audio content)",
+                                interactive=True
                             )
                             
                             reset_btn_capture = gr.Button("Reset to Default")

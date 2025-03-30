@@ -18,7 +18,7 @@ from utils.compare_images import compare_images
 from utils.images2pdf import images2pdf
 
 # Load configuration from JSON file
-with open('config.json', 'r') as f:
+with open('config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
 
 class VideoProcessingError(Exception):
@@ -38,6 +38,7 @@ class VideoProcessor:
                 pdf_name=config['OUTPUT_PDF_NAME'], start_time=config['START_TIME'], end_time=config['END_TIME'],
                 fps_sample=config['FRAMES_PER_SECOND'], asr_model=config['ASR_MODEL'],
                 asr_device=config['ASR_DEVICE'], compare_method=config['COMPARE_METHOD'],
+                asr_prompt=config['ASR_PROMPT'],
                 export_pdf=False):
         self.url = Path(url) if url else None
         # Create output directory with video name or screen capture
@@ -66,6 +67,7 @@ class VideoProcessor:
         self._audio_recording = False
         self._audio_thread = None
         self._audio_queue = None
+        self.asr_prompt = asr_prompt
         
     def process(self):
         # Create output directories if they don't exist
@@ -180,7 +182,10 @@ class VideoProcessor:
                 device = self.asr_device
             
             model = whisper.load_model(self.asr_model[8:], device=device)  # Remove 'whisper-' prefix
-            result = model.transcribe(str(audio_path), fp16=(device == "cuda"))
+            
+            # Add prompt for better transcription
+            prompt = self.asr_prompt
+            result = model.transcribe(str(audio_path), fp16=(device == "cuda"), initial_prompt=prompt)
             
             # Save transcript
             transcript_path = output_dir / config['OUTPUT_TRANSCRIPT_NAME']
@@ -361,39 +366,12 @@ class VideoProcessor:
 
             if self._progress_callback:
                 self._progress_callback(0.3, "Loading ASR model...First download needs some time")
-
-            # Determine device
-            if self.asr_device == "auto":
-                import torch
-                device = "cuda" if torch.cuda.is_available() else "cpu"
-            else:
-                device = self.asr_device
             
-            print(f"Using device: {device}")
-
-            # Load ASR model and transcribe
-            if self.asr_model.startswith('whisper-'):
-                # Extract whisper model name after 'whisper-' prefix
-                whisper_model_name = self.asr_model[8:]  # Remove 'whisper-' prefix
-                print(f"Loading whisper model: {whisper_model_name} on {device}")
-                model = whisper.load_model(whisper_model_name, device=device)
-                print("Model loaded successfully")
-                
-                if self._progress_callback:
-                    self._progress_callback(0.5, "Transcribing audio... this may take a little bit longer")
-                    
-                print("Transcribing audio...")
-                result = model.transcribe(str(audio_path), fp16=(device == "cuda"))
-                transcript_text = result["text"]
-                print("Transcription completed")
-            else:
-                raise ValueError(f"Unsupported ASR model: {self.asr_model}")
+            # Now call transcribe_audio to handle the transcription
+            transcript_text = self.transcribe_audio(audio_path, self.output_path)
             
-            # Save transcript
-            transcript_path = self.output_path / config['OUTPUT_TRANSCRIPT_NAME']
-            with open(transcript_path, 'w', encoding='utf-8') as f:
-                f.write(transcript_text)
-                
+            # No need to save transcript again as transcribe_audio already does this
+            
         except Exception as e:
             print(f"Error processing audio: {str(e)}")
             raise
