@@ -34,7 +34,7 @@ cd omg
 
    ### 使用 uv（推荐）
    ```bash
-   # 安装 uv
+   # 安装 uv（或从 https://github.com/astral-sh/uv 下载）
    pip install uv
    
    # 创建并激活虚拟环境

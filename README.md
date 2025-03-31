@@ -34,7 +34,7 @@ cd omg
 
    ### Using uv (Recommended)
    ```bash
-   # Install uv
+   # Install uv (or download from https://github.com/astral-sh/uv)
    pip install uv
    
    # Create and activate virtual environment
