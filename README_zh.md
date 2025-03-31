@@ -30,10 +30,26 @@ git clone https://github.com/ZhenghaoYang19/omg.git
 cd omg
 ```
 
-2. 安装依赖：
-```bash
-pip install -r requirements.txt
-```
+2. 创建虚拟环境并安装依赖：
+
+   ### 使用 uv（推荐）
+   ```bash
+   # 安装 uv
+   pip install uv
+   
+   # 创建并激活虚拟环境
+   uv venv
+   .venv\Scripts\activate  # Windows系统
+   source .venv/bin/activate  # Linux/macOS系统
+   
+   # 安装依赖
+   uv pip install -r requirements.txt
+   ```
+
+   ### 使用 pip
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 3. 安装 FFmpeg：
 - Windows：从 [FFmpeg 官网](https://ffmpeg.org/download.html) 下载

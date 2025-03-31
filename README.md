@@ -30,10 +30,26 @@ git clone https://github.com/ZhenghaoYang19/omg.git
 cd omg
 ```
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+2. Create virtual environment and install dependencies:
+
+   ### Using uv (Recommended)
+   ```bash
+   # Install uv
+   pip install uv
+   
+   # Create and activate virtual environment
+   uv venv
+   .venv\Scripts\activate  # On Windows
+   source .venv/bin/activate  # On Linux/macOS
+   
+   # Install dependencies
+   uv pip install -r requirements.txt
+   ```
+
+   ### Using pip
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 3. Install FFmpeg:
 - Windows: Download from [FFmpeg website](https://ffmpeg.org/download.html)
